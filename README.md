@@ -1,15 +1,17 @@
-# spring-boot-hello
-# Pre-requisites:
-  - Install Java
-  - Install GIT
-  - Install Maven
-  
-# Clone code from github:
-    git clone https://github.com/Naresh240/springboot-hello.git
-    cd pring-boot-hello
-# Build Maven Artifact:
-    mvn clean install
-# Deploy springboot application:
-    java -jar gs-spring-boot-0.1.0.jar
+# jenkins-eks-cluster-integration
+## Pre-requisites
+```sh
+1. EKS Cluster
+2. Jenkins Sever
 
-123
+Install below softwares in Jenkins Server
+- Install Java
+- Install GIT
+- Install Maven
+- Install Kubectl
+```
+## Run Jenkinsfile
+```sh
+1. Add role to jenkins server to communicate with EKS Cluster
+2. provide cluster name and region as parameter while running pipeline
+```
