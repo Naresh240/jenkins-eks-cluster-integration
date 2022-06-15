@@ -1,62 +1,61 @@
 pipeline{
+    parameters {
+	    string(name: 'cluster_name', description: "Name of the EKS Cluster")
+	    string(name: 'region', description: "Name of the AWS Region")
+    }
     environment {
-    account = "${environment}" 
-    eks_cluster_name = "eks-${account}" 
-    artifacts_dir = "${env.WORKSPACE}/artifacts"
-    aws_region = "${params.aws_region}"
-    job_root_dir="${env.WORKSPACE}"
+        account = "${environment}" 
+        eks_cluster_name = "${cluster_name}" 
+        artifacts_dir = "${env.WORKSPACE}/artifacts"
+        aws_region = "${region}"
+        job_root_dir="${env.WORKSPACE}"
     }
-    tools { 
-        maven 'maven-3.8.1' 
-       
-    }
-    agent {
-        label 'master'
+    agent any
+    stages{
+        stage('Initialize workspace') {
+            steps {
+            // Make sure the directory is clean
+                dir("${artifacts_dir}") {
+                    deleteDir()
+                }
+                sh(script: "mkdir -p ${artifacts_dir}", label: 'Create artifacts directory')
+            }
         }
-        stages{
-            stage('Initialize workspace') {
-        steps {
-        // Make sure the directory is clean
-        dir("${artifacts_dir}") {
-            deleteDir()
+        stage('SCM'){
+            steps{
+                git branch: 'master',
+                    url: 'https://github.com/Naresh240/jenkins-eks-cluster-integration.git'
+            }
         }
-        sh(script: "mkdir -p ${artifacts_dir}", label: 'Create artifacts directory')
+        stage('Build'){
+            steps{
+               sh 'mvn clean package'
+            }
         }
-    }
-            stage('git stage'){
-                steps{
-                    git branch: 'master', url: 'https://github.com/Naresh240/springboot-hello.git'
+        stage("Generate_Kubeconfig_file"){
+            steps {
+                script {
+                    env.KUBECONFIG = "${artifacts_dir}/${eks_cluster_name}-kubeconfig"
+                    sh 'chmod +x ${WORKSPACE}/generate_kubeconfig_eks.sh'
+                }
+                sh(script: '${WORKSPACE}/generate_kubeconfig_eks.sh', label: 'Generate kubeconfig file')
+            }
+        }
+        stage('Deploy_To_Cluster'){
+            steps{
+                script{
+                    sh '''
+                        kubectl apply -f deployment.yml
+                        kubectl apply -f service.yml
+                        kubectl get all
+                    '''
                 }
             }
-            stage('build maven project '){
-                steps{
-                   sh 'mvn clean package'
-                }
-            }
-		stage('Generate kubeconfig for the cluster') {
-        steps {
-        script {
-            env.KUBECONFIG = "${artifacts_dir}/${eks_cluster_name}-kubeconfig"
-            sh 'chmod +x ${WORKSPACE}/generate_kubeconfig_eks.sh'
-        }
-        sh(script: '${WORKSPACE}/generate_kubeconfig_eks.sh', label: 'Generate kubeconfig file')
         }
     }
-    
-    stage('Get the cluster details') {
-        steps {
-        script {
-            sh '''kubectl apply -f deployment.yml 
-                  kubectl apply -f service.yml
-                  kubectl get all
-                '''
-        }
-        }
-    }
-        }
     post {
-	    cleanup {
-	          cleanWs(cleanWhenFailure: false)
-	    }
+	   cleanup {
+	       cleanWs(cleanWhenFailure: false)
+	   }
     }
 }
