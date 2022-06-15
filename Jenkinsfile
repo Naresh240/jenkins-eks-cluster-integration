@@ -9,6 +9,9 @@ pipeline{
         artifacts_dir = "${env.WORKSPACE}/artifacts"
         aws_region = "${region}"
         job_root_dir="${env.WORKSPACE}"
+	registry = 'naresh240/springboothello:latest'
+	registryCredentials = 'docker_credentials'
+	dockerImage = ''	    
     }
     agent any
     stages{
@@ -27,11 +30,27 @@ pipeline{
                     url: 'https://github.com/Naresh240/jenkins-eks-cluster-integration.git'
             }
         }
-        stage('Build'){
+        stage('Build_Artifact'){
             steps{
                sh 'mvn clean package'
             }
         }
+        stage ('Build_Docker_Image') {
+            steps {
+                script {
+                    dockerImage = docker.build registry
+                }
+            }
+        }
+        stage ('Pushing_Docker_Image') {
+            steps {
+                script {
+                    docker.withRegistry('',registryCredentials) {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }	    
         stage("Generate_Kubeconfig_file"){
             steps {
                 script {
